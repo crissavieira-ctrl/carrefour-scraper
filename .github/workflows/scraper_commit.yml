@@ -39,17 +39,19 @@ jobs:
         run: |
           python scraper_carrefour_bh.py
 
+            - name: Run RJ scraper
+        run: |
+          python scraper_carrefour_rj.py
+
       - name: Commit and push updated Excel(s)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # inclui dados e logs de erros, caso existam
-          git add data/*.xlsx data_bh/*.xlsx || true
-          git add data/erros_*.xlsx data_bh/erros_*.xlsx || true
+          git add data/*.xlsx data_bh/*.xlsx data_rj/*.xlsx || true
+          git add data/erros_*.xlsx data_bh/erros_*.xlsx data_rj/erros_*.xlsx || true
           if git diff --cached --quiet; then
             echo "Sem mudanças para commitar."
           else
             git commit -m "Atualiza planilhas mensais (run $(date -u +'%Y-%m-%d'))"
             git push
           fi
-
