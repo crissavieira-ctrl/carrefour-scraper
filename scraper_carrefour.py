@@ -2,7 +2,7 @@
 """
 Scraper Carrefour via JSON-LD (ld+json)
 Modo: GitHub Actions + commit no repo
-Armazenamento: 1 Excel por mês (coluna por dia) POR CIDADE
+Armazenamento: 1 Excel por mês (coluna por dia)
 """
 
 import os
@@ -13,38 +13,23 @@ import pandas as pd
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-# (NOVO) Para abrir/confirmar o CEP; se não usar, o resto continua igual
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
-# =========================
-# 0) CIDADES E CEPs
-# =========================
-CIDADES = {
-    "Sao_Paulo": "01001-000",
-    "Belo_Horizonte": "30110-002",
-    "Rio_de_Janeiro": "20010-000",
-    "Salvador": "40020-000",
-    "Curitiba": "80010-000",
-    "Porto_Alegre": "90010-150",
-    "Belem": "66010-000",
-}
 
 # =========================
 # 1) Paths e nomes mensais
 # =========================
-try:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))   # se rodar como script
-except NameError:
-    BASE_DIR = os.getcwd()                                  # fallback p/ notebook/runner
-
+BASE_DIR = os.path.dirname(os.path.abspath(_file_))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 today = datetime.now()
 STAMP_DAY = today.strftime("%Y%m%d")       # -> coluna diária (Preço_YYYYMMDD)
 STAMP_MONTH = today.strftime("%Y-%m")      # -> arquivo do mês (precos_carrefour_YYYY-MM.xlsx)
+
+ARQ_MENSAL = os.path.join(DATA_DIR, f"precos_carrefour_{STAMP_MONTH}.xlsx")
+ARQ_ERROS  = os.path.join(DATA_DIR, f"erros_carrefour_{STAMP_MONTH}.xlsx")
 COLUNA_DIA = f"Preço_{STAMP_DAY}"
+
 
 # =========================================
 # 2) Driver (headless — ideal para Actions)
@@ -62,91 +47,15 @@ def build_driver(headless: bool = True):
     opts.add_experimental_option("prefs", {
         "profile.managed_default_content_settings.images": 2
     })
-    driver = webdriver.Chrome(options=opts)  # Selenium Manager resolve o driver
+    # Selenium Manager resolve o driver compatível automaticamente
+    driver = webdriver.Chrome(options=opts)
     driver.set_page_load_timeout(60)
     driver.implicitly_wait(2)
     return driver
 
-# =====================================
-# 2.1) (NOVO) Tentar definir CEP da cidade na UI
-#       -> se falhar, segue do mesmo jeito de antes (sem quebrar)
-# =====================================
-def set_cep(driver: webdriver.Chrome, cep: str, timeout: int = 25):
-    try:
-        driver.get("https://mercado.carrefour.com.br/")
-        wait = WebDriverWait(driver, timeout)
-
-        # abrir modal CEP (várias opções; se nenhuma pegar, tenta via JS)
-        open_btns = [
-            (By.CSS_SELECTOR, 'button[aria-label*="CEP"]'),
-            (By.CSS_SELECTOR, 'button[data-testid*="address"], button[data-testid*="location"]'),
-            (By.XPATH, '//button[contains(., "Informe seu CEP") or contains(., "Alterar endereço") or contains(., "Trocar endereço")]'),
-            (By.CSS_SELECTOR, 'button[aria-label*="endereço"]'),
-        ]
-        opened = False
-        for how in open_btns:
-            try:
-                btn = wait.until(EC.element_to_be_clickable(how))
-                btn.click()
-                opened = True
-                break
-            except Exception:
-                continue
-        if not opened:
-            driver.execute_script("""
-                const b = document.querySelector('button[aria-label*="CEP"], button[data-testid*="address"], button[data-testid*="location"], button[aria-label*="endereço"]');
-                if (b) b.click();
-            """)
-            time.sleep(1)
-
-        # campo de CEP
-        cep_input = None
-        for how in [
-            (By.CSS_SELECTOR, 'input[name*="cep"], input[id*="cep"], input[name*="zip"], input[id*="zip"]'),
-            (By.XPATH, '//input[@type="text" and (contains(@name,"cep") or contains(@id,"cep") or contains(@name,"zip") or contains(@id,"zip") or contains(@placeholder, "CEP"))]'),
-        ]:
-            try:
-                cep_input = wait.until(EC.visibility_of_element_located(how))
-                break
-            except Exception:
-                continue
-
-        if cep_input is not None:
-            cep_input.clear()
-            cep_input.send_keys(cep)
-            time.sleep(0.6)
-        else:
-            driver.execute_script("""
-                const i = document.querySelector('input[name*="cep"], input[id*="cep"], input[name*="zip"], input[id*="zip"]');
-                if (i) { i.value = arguments[0]; i.dispatchEvent(new Event('input', {bubbles:true})); }
-            """, cep)
-
-        # confirmar
-        confirmed = False
-        for how in [
-            (By.CSS_SELECTOR, 'button[type="submit"]'),
-            (By.XPATH, '//button[contains(., "Confirmar") or contains(., "Continuar") or contains(., "OK")]'),
-        ]:
-            try:
-                btn = wait.until(EC.element_to_be_clickable(how))
-                btn.click()
-                confirmed = True
-                break
-            except Exception:
-                continue
-        if not confirmed:
-            driver.execute_script("""
-                const b = [...document.querySelectorAll('button')].find(x => /confirmar|continuar|ok/i.test(x.textContent));
-                if (b) b.click();
-            """)
-
-        time.sleep(2.0)
-        print(f"📍 CEP definido: {cep}")
-    except Exception as e:
-        print(f"⚠️ Não consegui aplicar o CEP {cep}. Vou seguir assim mesmo. Detalhe: {e}")
 
 # =====================================
-# 3) Scraper: lê JSON-LD do tipo Product (SEU CÓDIGO ORIGINAL)
+# 3) Scraper: lê JSON-LD do tipo Product
 # =====================================
 def scrape_product_via_json(url: str, driver: webdriver.Chrome) -> dict:
     print(f"\n🔗 {url}")
@@ -193,41 +102,204 @@ def scrape_product_via_json(url: str, driver: webdriver.Chrome) -> dict:
     print("⚠️ Nada encontrado nessa URL.")
     return {"Nome do Produto": "Não encontrado", "Preço": 0.0, "URL": url}
 
+
 # =========================
-# 4) URLs (sua lista aqui)  [MANTIDA]
+# 4) URLs (sua lista aqui)
 # =========================
 URLS = [
+    # ------------------ Lista original ------------------
     'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-2kg-115657/p',
     'https://mercado.carrefour.com.br/feijao-carioca-tipo-1-kicaldo-1kg-466506/p',
-    # ... mantenha o restante da sua lista
+    'https://mercado.carrefour.com.br/macarrao-de-semola-com-ovos-espaguete-8-adria-500g-4180372/p',
+    'https://mercado.carrefour.com.br/farofa-de-mandioca-tradicional-yoki-400g-6582613/p',
+    'https://mercado.carrefour.com.br/massa-para-pastel-discao-massa-leve-500g-841757/p',
+    'https://mercado.carrefour.com.br/macarrao-instantaneo-nissin-sabor-galinha-caipira-85g-4814177/p',
+    'https://mercado.carrefour.com.br/batata-monalisa-carrefour-aprox-600g-46922/p',
+    'https://mercado.carrefour.com.br/pimentao-block-vermelho-trebeshi-150-g-5738458/p',
+    'https://mercado.carrefour.com.br/tomate-carmem-carrefour-aprox-500g-262676/p',
+    'https://mercado.carrefour.com.br/cebola-carrefour-aprox-500g-20621/p',
+    'https://mercado.carrefour.com.br/cenoura-unico-1kg-5154669/p',
+    'https://mercado.carrefour.com.br/acucar-refinado-uniao-1kg-197564/p',
+    'https://mercado.carrefour.com.br/chocolate-ao-leite-com-amendoim-shot-165g-5790859/p',
+    'https://mercado.carrefour.com.br/sorvete-napolitano-nestle-1-5-litros-8616043/p',
+    'https://mercado.carrefour.com.br/achocolatado-em-po-nescau-550g-6409717/p',
+    'https://mercado.carrefour.com.br/alface-lisa-carrefour-7745044/p',
+    'https://mercado.carrefour.com.br/couve-flor-cledson-300-g-9560297/p',
+    'https://mercado.carrefour.com.br/banana-nanica-fresca-organica-600g-210978/p',
+    'https://mercado.carrefour.com.br/banana-prata-fischer-turma-da-monica-750g-9773711/p',
+    'https://mercado.carrefour.com.br/limao-siciliano-carrefour-aprox-500g-63592/p',
+    'https://mercado.carrefour.com.br/maca-gala-carrefour-aprox-600-g-10120/p',
+    'https://mercado.carrefour.com.br/mamao-formosa-sabor-qualidade-aprox-16-kg-20524/p',
+    'https://mercado.carrefour.com.br/manga-palmer-carrefour-aprox-600g-88919/p',
+    'https://mercado.carrefour.com.br/melancia-premium-carrefour-aprox---8kg-194743/p',
+    'https://mercado.carrefour.com.br/pera-willians-aprox-500g-39675/p',
+    'https://mercado.carrefour.com.br/uva-escura-sem-semente-carrefour-500g-5141982/p',
+    'https://mercado.carrefour.com.br/laranja-pera-carrefour-mercado-5-kg-6282032/p',
+    'https://mercado.carrefour.com.br/bisteca-suina-congelada-sadia-1-kg-209864/p',
+    'https://mercado.carrefour.com.br/contra-file-swift-mais-aprox-1-5kg-295906/p',
+    'https://mercado.carrefour.com.br/coxao-mole-fracionado-a-vacuo-aprox--1-3-kg-18295/p',
+    'https://mercado.carrefour.com.br/alcatra-bovina-carrefour-aproximadamente-400-g-21962/p',
+    'https://mercado.carrefour.com.br/patinho-fracionado-a-vacuo-500g-18325/p',
+    'https://mercado.carrefour.com.br/lagarto-swift-mais-aprox-15kg-295914/p',
+    'https://mercado.carrefour.com.br/paleta-bovina-a-vacuo-500gnao-reativarcodigo-de-compra-20745/p',
+    'https://mercado.carrefour.com.br/acem-em-pedacos-carrefour-aproximadamente-500-g-158828/p',
+    'https://mercado.carrefour.com.br/costela-minga-bovina-cong-aprox-2kg-224006/p',
+    'https://mercado.carrefour.com.br/camarao-descascado-cozido-36-40-celm-400-g-5939747/p',
+    'https://mercado.carrefour.com.br/posta-cacao-congelado-buona-pesca-500-g-6311059/p',
+    'https://mercado.carrefour.com.br/file-de-merluza-congelado-planalto-500-g-6323774/p',
+    'https://mercado.carrefour.com.br/file-de-pescada-sem-espinha-swift-500-g-5457297/p',
+    'https://mercado.carrefour.com.br/file-de-tilapia-fresco-carrefour-500-g-98930/p',
+    'https://mercado.carrefour.com.br/presunto-cozido-sem-capa-fatiado-aurora-aproximadamente-200-g-49450/p',
+    'https://mercado.carrefour.com.br/salsicha-hot-dog-resfriada-aurora-aproximadamente-500-g-49352/p',
+    'https://mercado.carrefour.com.br/linguica-toscana-swift-700-g-5600812/p',
+    'https://mercado.carrefour.com.br/mortadela-defumada-sadia-280g-5447045/p',
+    'https://mercado.carrefour.com.br/queijo-minas-frescal-aurora-450-g-6264693/p',
+    'https://mercado.carrefour.com.br/queijo-coalho-bom-leite-500-g-4305054/p',
+    'https://mercado.carrefour.com.br/leite-uht-integral-piratininga-1-l-665017/p',
+    'https://mercado.carrefour.com.br/iogurte-natural-tradicional-batavo-170g-5150439/p',
+    'https://mercado.carrefour.com.br/manteiga-com-sal-aviacao-200-g-10010/p',
+    'https://mercado.carrefour.com.br/creme-de-leite-ultrapasteurizado-itambe-200-g-5988921/p',
+    'https://mercado.carrefour.com.br/requeijao-cremoso-aviacao-tradicional-220-g-10000/p',
+    'https://mercado.carrefour.com.br/acucar-cristal-carrefour-1kg-5147300/p',
+    'https://mercado.carrefour.com.br/mel-com-cacau-e-avela-400-g-4510146/p',
+    'https://mercado.carrefour.com.br/geleia-de-goiaba-selecoes-c-pedacos-260-g-1280815/p',
+    'https://mercado.carrefour.com.br/suco-de-uva-integral-maric-1-l-3538256/p',
+    'https://mercado.carrefour.com.br/vinho-tinto-fino-seco-cabernet-sauvignon-pergola-750ml-1521709/p',
+    'https://mercado.carrefour.com.br/whisky-red-label-johnnie-walker-1-litro-2719/p',
+    'https://mercado.carrefour.com.br/refrigerante-coca-cola-sabor-cola-1-5-l-11087/p',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-extraforte-melitta-500g-271203/p',
+    'https://mercado.carrefour.com.br/farinha-de-trigo-dona-benta-tradicional-1kg-196416/p',
+    'https://mercado.carrefour.com.br/azeite-extravirgem-portugues-oliveira-da-serra-500-ml-4526108/p',
+    'https://mercado.carrefour.com.br/oleo-de-soja-soya-900ml-482616/p',
+    'https://mercado.carrefour.com.br/margarina-qualy-com-sal-250g-4815618/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-1kg-115658/p',
+    'https://mercado.carrefour.com.br/feijao-preto-tipo-1-kicaldo-1kg-466510/p',
+
+    # ------------------ Itens adicionais ------------------
+    # Arroz
+    'https://mercado.carrefour.com.br/arroz-branco-longo-fino-tipo-1-meu-biju-1kg-4956435/p',
+    'https://mercado.carrefour.com.br/arroz-branco-carrefour-classic-olimpiadas-1kg-3433455/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-prato-fino-1-kg-3142248/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-camil-todo-dia-1kg-1336118/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-1-kg-387606/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-carrefour-1kg-6677711/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-tio-joao-1-kg-3136400/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-prato-fino-1-kg-7043236/p',
+
+    # Pão francês
+    'https://mercado.carrefour.com.br/pao-frances-carrefour-aprox-110g-168076/p',
+    'https://mercado.carrefour.com.br/busca/pao%20frances',
+
+    # Leite longa vida
+    'https://mercado.carrefour.com.br/leite-desnatado-piracanjuba-1-litro-3371697/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-uht-molico-1-l-6083900/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-uht-tipo-a-leitissimo-1-litro-9682953/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-liquido-parmalat-1-litro-5254337/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-piracanjuba-1-litro-7863756/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-uht-goiasminas-italac-1-litro-8819530/p',
+    'https://mercado.carrefour.com.br/leite-uht-integral-carrefour-classic-1l-3218023/p',
+    'https://mercado.carrefour.com.br/leite-sem-lactose-integral-uht-italac-1-litro-5823048/p',
+
+    # Biscoito
+    'https://mercado.carrefour.com.br/biscoito-com-chocolate-chocobiscuit-nestle-ao-leite-78g-3485935/p',
+    'https://mercado.carrefour.com.br/biscoito-amanteigado-chocolate-e-doce-de-leite-carrefour-100-g-6226213/p',
+    'https://mercado.carrefour.com.br/busca/biscoito%20doce',
+    'https://mercado.carrefour.com.br/biscoito-de-polvilho-doce-carrefour-200g-7738714/p',
+    'https://mercado.carrefour.com.br/biscoito-salgado-club-social-original-multipack-144g-9923357/p',
+    'https://mercado.carrefour.com.br/biscoito-de-polvilho-salgado-carrefour-200g-5570417/p',
+    'https://mercado.carrefour.com.br/biscoito-salgado-cream-cracker-integral-piraque-215g-3179591/p',
+
+    # Refrigerante e água mineral
+    'https://mercado.carrefour.com.br/refrigerante-guarana-antarctica-garrafa-2l-156396/p',
+    'https://mercado.carrefour.com.br/refrigerante-cocacola-garrafa-2-l-5761719/p',
+    'https://mercado.carrefour.com.br/refrigerante-fanta-laranja-2l-157201/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-nestle-pureza-vital-15-litros-7026099/p',
+    'https://mercado.carrefour.com.br/agua-mineral-crystal-sem-gas-15l-8812128/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-minalba-15-litros-708941/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-frescca-15-litros-4928784/p',
+
+    # Frango inteiro
+    'https://mercado.carrefour.com.br/frango-inteiro-temperado-seara-assa-facil-aprox-19kg-170739/p',
+    'https://mercado.carrefour.com.br/frango-inteiro-swift-aprox-25-kg-213519/p',
+
+    # Café moído
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-a-vacuo-tradicional-pilao-500g-7515758/p',
+    'https://mercado.carrefour.com.br/busca/cafe%20moido',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-do-ponto-exportacao-vacuo-500-g-4416090/p',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-a-vacuo-bom-jesus-500g-8343527/p',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-3-coracoes-cerrado-mineiro-250-g-6127002/p',
+    'https://mercado.carrefour.com.br/cafe-starbucks-house-blend-torrado-e-moido-torra-media-250g-5688396/p',
+
+    # Cerveja
+    'https://mercado.carrefour.com.br/cerveja-heineken-garrafa-600ml-7941234/p',
+    'https://mercado.carrefour.com.br/cerveja-baden-baden-golden-ale-garrafa-600ml-7948190/p',
+    'https://mercado.carrefour.com.br/cerveja-brahma-duplo-malte-puro-malte-350ml-lata-6643426/p',
+    'https://mercado.carrefour.com.br/cerveja-budweiser-american-lager-lata-269-ml-9704698/p',
+    'https://mercado.carrefour.com.br/cerveja-pilsen-original-lata-269ml-6418724/p',
+    'https://mercado.carrefour.com.br/cerveja-original-pilsen-350ml-lata-5699193/p',
+    'https://mercado.carrefour.com.br/cerveja-amstel-lager-lata-sleek-350ml-3180107/p',
+    'https://mercado.carrefour.com.br/cerveja-heineken-lata-269ml-6688802/p',
+
+    # Costela
+    'https://mercado.carrefour.com.br/costela-bovina-janela-congelada-aprox-1-8kg-224014/p',
+    'https://mercado.carrefour.com.br/busca/costela?page=1',
+    'https://mercado.carrefour.com.br/costela-de-cordeiro-a-vacuo-28738/p',
+
+    # Queijo
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-president-150g-8613966/p',
+    'https://mercado.carrefour.com.br/queijo-fatiado-sabor-mussarela-polenghi-144g-7413394/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-carrefour-aproximadamente-200-g-25585/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-importado-fatiado-aprox-200g-149225/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-mandaka-com-150-g-6709206/p',
+    'https://mercado.carrefour.com.br/queijo-prato-fatiado-president-150g-8614008/p',
+    'https://mercado.carrefour.com.br/queijo-prato-fatiado-tirolez-150g-5033799/p',
+
+    # Linguiça
+    'https://mercado.carrefour.com.br/busca/lingui%C3%A7a',
+    'https://mercado.carrefour.com.br/linguica-toscana-grossa-auora-aprox--700g-21113/p',
+    'https://mercado.carrefour.com.br/linguica-toscana-sadia-700g-3213242/p',
+    'https://mercado.carrefour.com.br/linguica-toscana-swift-700-g-5600812/p',
+    'https://mercado.carrefour.com.br/busca/lingui%C3%A7a?page=3',
+
+    # Leite em pó
+    'https://mercado.carrefour.com.br/leite-em-po-molico-desnatado-lata-280g-9442405/p',
+    'https://mercado.carrefour.com.br/leite-em-po-integral-italac-200g-7680198/p',
+    'https://mercado.carrefour.com.br/leite-em-po-ninho-adulto-lata-350g-3428877/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-em-po-instantaneo-italac-280g-8669937/p',
+
+    # Ovo de galinha
+    'https://mercado.carrefour.com.br/ovos-brancos-carrefour-20-unidades-5286387/p',
+    'https://mercado.carrefour.com.br/ovo-branco-grande-ac-planalto-ovos-bandeja-com-20-6206310/p',
+    'https://mercado.carrefour.com.br/ovos-vermelhos-carrefour-20-unidades-8453624/p',
+    'https://mercado.carrefour.com.br/ovo-vermelho-grande-mantiqueira-happy-eggs-com-20-unidades-6403603/p',
+    'https://mercado.carrefour.com.br/ovo-branco-grande-mantiqueira-happy-eggs-com-20-unidades-6403565/p',
+    'https://mercado.carrefour.com.br/ovo-caipira-grande-organicos-raiar-com-20-unidades-3050050/p',
+
+    # Óleo de soja
+    'https://mercado.carrefour.com.br/oleo-de-soja-confiare-900ml-3731243/p',
+    'https://mercado.carrefour.com.br/oleo-de-soja-soya-900ml-141836/p',
+    'https://mercado.carrefour.com.br/oleo-de-soja-vitaliv-garrafa-900-ml-6473563/p'
 ]
 
 # =========================
-# 5) Execução para UMA cidade (envólucro)
-#     -> reaproveita 100% da tua lógica de Excel
+# 5) Execução principal
 # =========================
-def rodar_para_cidade(driver: webdriver.Chrome, cidade_slug: str, cep: str):
-    # tenta aplicar CEP (mas não quebra se falhar)
-    set_cep(driver, cep)
-    time.sleep(1)
+def main():
+    driver = build_driver(headless=True)
 
-    # --- raspagem (igual ao teu main original) ---
-    registros = []
-    for url in URLS:
-        registros.append(scrape_product_via_json(url, driver))
-        time.sleep(1)
+    try:
+        registros = []
+        for url in URLS:
+            registros.append(scrape_product_via_json(url, driver))
+            time.sleep(1)
+    finally:
+        driver.quit()
 
     df_total = pd.DataFrame(registros)
     df_ok  = df_total[df_total["Preço"] > 0][["Nome do Produto", "Preço"]].copy()
     df_err = df_total[df_total["Preço"] <= 0].copy()
 
-    # --- paths POR CIDADE (mudança mínima) ---
-    city_dir = os.path.join(DATA_DIR, cidade_slug)
-    os.makedirs(city_dir, exist_ok=True)
-    ARQ_MENSAL = os.path.join(city_dir, f"precos_carrefour_{STAMP_MONTH}.xlsx")
-    ARQ_ERROS  = os.path.join(city_dir, f"erros_carrefour_{STAMP_MONTH}.xlsx")
-
-    # ---- Excel mensal: aba "Precos" com coluna diária (SEU CÓDIGO) ----
+    # ---- Excel mensal: aba "Precos" com coluna diária ----
     if not df_ok.empty:
         if os.path.exists(ARQ_MENSAL):
             base = pd.read_excel(ARQ_MENSAL, sheet_name="Precos")
@@ -241,11 +313,11 @@ def rodar_para_cidade(driver: webdriver.Chrome, cidade_slug: str, cep: str):
 
         with pd.ExcelWriter(ARQ_MENSAL, engine="openpyxl", mode="w") as w:
             base.to_excel(w, index=False, sheet_name="Precos")
-        print(f"📁 [{cidade_slug}] Atualizado: {ARQ_MENSAL} (coluna {COLUNA_DIA})")
+        print(f"📁 Atualizado: {ARQ_MENSAL} (coluna {COLUNA_DIA})")
     else:
-        print(f"⚠️ [{cidade_slug}] Nenhum preço válido hoje.")
+        print("⚠️ Nenhum preço válido hoje.")
 
-    # ---- Log de erros do mês (SEU CÓDIGO) ----
+    # ---- Log de erros do mês (opcional) ----
     if not df_err.empty:
         df_err["Data"] = today.strftime("%Y-%m-%d")
         if os.path.exists(ARQ_ERROS):
@@ -254,22 +326,10 @@ def rodar_para_cidade(driver: webdriver.Chrome, cidade_slug: str, cep: str):
         else:
             be = df_err
         be.to_excel(ARQ_ERROS, index=False)
-        print(f"⚠️ [{cidade_slug}] Erros/zeros salvos: {ARQ_ERROS}")
+        print(f"⚠️ Erros/zeros salvos: {ARQ_ERROS}")
     else:
-        print(f"✅ [{cidade_slug}] Sem erros hoje.")
+        print("✅ Sem erros hoje.")
 
-# =========================
-# 6) Execução principal (loop de cidades)
-# =========================
-def main():
-    driver = build_driver(headless=True)
-    try:
-        for cidade_slug, cep in CIDADES.items():
-            print(f"\n================ {cidade_slug} (CEP {cep}) ================")
-            rodar_para_cidade(driver, cidade_slug, cep)
-    finally:
-        driver.quit()
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
-
