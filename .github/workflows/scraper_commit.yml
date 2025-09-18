@@ -32,18 +32,16 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run SP scraper
-        run: |
-          python scraper_carrefour.py
+        run: python scraper_carrefour.py
 
       - name: Run BH scraper
-        run: |
-          python scraper_carrefour_bh.py
+        run: python scraper_carrefour_bh.py
 
-            - name: Run RJ scraper
-        run: |
-          python scraper_carrefour_rj.py
+      - name: Run RJ scraper
+        run: python scraper_carrefour_rj.py
 
       - name: Commit and push updated Excel(s)
+        if: ${{ always() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -55,3 +53,4 @@ jobs:
             git commit -m "Atualiza planilhas mensais (run $(date -u +'%Y-%m-%d'))"
             git push
           fi
+
