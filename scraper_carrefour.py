@@ -18,7 +18,7 @@ from selenium.webdriver.common.by import By
 # =========================
 # 1) Paths e nomes mensais
 # =========================
-BASE_DIR = os.path.dirname(os.path.abspath(_file_))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -331,5 +331,5 @@ def main():
         print("✅ Sem erros hoje.")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
