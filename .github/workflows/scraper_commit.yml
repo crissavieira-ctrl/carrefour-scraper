@@ -43,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # inclui dados de SP, BH e eventuais logs de erros
+          # inclui dados e logs de erros, caso existam
           git add data/*.xlsx data_bh/*.xlsx || true
           git add data/erros_*.xlsx data_bh/erros_*.xlsx || true
           if git diff --cached --quiet; then
@@ -52,3 +52,4 @@ jobs:
             git commit -m "Atualiza planilhas mensais (run $(date -u +'%Y-%m-%d'))"
             git push
           fi
+
