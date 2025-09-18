@@ -235,7 +235,7 @@ def scrape_product_via_json(url: str, driver: webdriver.Chrome) -> dict:
 # 5) URLs (mesma lista base)
 # =========================
 URLS = [
-    # --- copie/cole aqui a mesma lista do script de SP (mantive sua lista completa) ---
+    # ------------------ Lista original ------------------
     'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-2kg-115657/p',
     'https://mercado.carrefour.com.br/feijao-carioca-tipo-1-kicaldo-1kg-466506/p',
     'https://mercado.carrefour.com.br/macarrao-de-semola-com-ovos-espaguete-8-adria-500g-4180372/p',
@@ -302,8 +302,113 @@ URLS = [
     'https://mercado.carrefour.com.br/margarina-qualy-com-sal-250g-4815618/p',
     'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-1kg-115658/p',
     'https://mercado.carrefour.com.br/feijao-preto-tipo-1-kicaldo-1kg-466510/p',
-    # ... (demais URLs que você já tem — mantidas para BH)
+
+    # ------------------ Itens adicionais ------------------
+    # Arroz
+    'https://mercado.carrefour.com.br/arroz-branco-longo-fino-tipo-1-meu-biju-1kg-4956435/p',
+    'https://mercado.carrefour.com.br/arroz-branco-carrefour-classic-olimpiadas-1kg-3433455/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-prato-fino-1-kg-3142248/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-camil-todo-dia-1kg-1336118/p',
+    'https://mercado.carrefour.com.br/arroz-branco-longofino-tipo-1-tio-joao-1-kg-387606/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-carrefour-1kg-6677711/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-tio-joao-1-kg-3136400/p',
+    'https://mercado.carrefour.com.br/arroz-parboilizado-longo-fino-tipo-1-prato-fino-1-kg-7043236/p',
+
+    # Pão francês
+    'https://mercado.carrefour.com.br/pao-frances-carrefour-aprox-110g-168076/p',
+    'https://mercado.carrefour.com.br/busca/pao%20frances',
+
+    # Leite longa vida
+    'https://mercado.carrefour.com.br/leite-desnatado-piracanjuba-1-litro-3371697/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-uht-molico-1-l-6083900/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-uht-tipo-a-leitissimo-1-litro-9682953/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-liquido-parmalat-1-litro-5254337/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-piracanjuba-1-litro-7863756/p',
+    'https://mercado.carrefour.com.br/leite-semidesnatado-uht-goiasminas-italac-1-litro-8819530/p',
+    'https://mercado.carrefour.com.br/leite-uht-integral-carrefour-classic-1l-3218023/p',
+    'https://mercado.carrefour.com.br/leite-sem-lactose-integral-uht-italac-1-litro-5823048/p',
+
+    # Biscoito
+    'https://mercado.carrefour.com.br/biscoito-com-chocolate-chocobiscuit-nestle-ao-leite-78g-3485935/p',
+    'https://mercado.carrefour.com.br/biscoito-amanteigado-chocolate-e-doce-de-leite-carrefour-100-g-6226213/p',
+    'https://mercado.carrefour.com.br/busca/biscoito%20doce',
+    'https://mercado.carrefour.com.br/biscoito-de-polvilho-doce-carrefour-200g-7738714/p',
+    'https://mercado.carrefour.com.br/biscoito-salgado-club-social-original-multipack-144g-9923357/p',
+    'https://mercado.carrefour.com.br/biscoito-de-polvilho-salgado-carrefour-200g-5570417/p',
+    'https://mercado.carrefour.com.br/biscoito-salgado-cream-cracker-integral-piraque-215g-3179591/p',
+
+    # Refrigerante e água mineral
+    'https://mercado.carrefour.com.br/refrigerante-guarana-antarctica-garrafa-2l-156396/p',
+    'https://mercado.carrefour.com.br/refrigerante-cocacola-garrafa-2-l-5761719/p',
+    'https://mercado.carrefour.com.br/refrigerante-fanta-laranja-2l-157201/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-nestle-pureza-vital-15-litros-7026099/p',
+    'https://mercado.carrefour.com.br/agua-mineral-crystal-sem-gas-15l-8812128/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-minalba-15-litros-708941/p',
+    'https://mercado.carrefour.com.br/agua-mineral-sem-gas-frescca-15-litros-4928784/p',
+
+    # Frango inteiro
+    'https://mercado.carrefour.com.br/frango-inteiro-temperado-seara-assa-facil-aprox-19kg-170739/p',
+    'https://mercado.carrefour.com.br/frango-inteiro-swift-aprox-25-kg-213519/p',
+
+    # Café moído
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-a-vacuo-tradicional-pilao-500g-7515758/p',
+    'https://mercado.carrefour.com.br/busca/cafe%20moido',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-do-ponto-exportacao-vacuo-500-g-4416090/p',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-a-vacuo-bom-jesus-500g-8343527/p',
+    'https://mercado.carrefour.com.br/cafe-torrado-e-moido-3-coracoes-cerrado-mineiro-250-g-6127002/p',
+    'https://mercado.carrefour.com.br/cafe-starbucks-house-blend-torrado-e-moido-torra-media-250g-5688396/p',
+
+    # Cerveja
+    'https://mercado.carrefour.com.br/cerveja-heineken-garrafa-600ml-7941234/p',
+    'https://mercado.carrefour.com.br/cerveja-baden-baden-golden-ale-garrafa-600ml-7948190/p',
+    'https://mercado.carrefour.com.br/cerveja-brahma-duplo-malte-puro-malte-350ml-lata-6643426/p',
+    'https://mercado.carrefour.com.br/cerveja-budweiser-american-lager-lata-269-ml-9704698/p',
+    'https://mercado.carrefour.com.br/cerveja-pilsen-original-lata-269ml-6418724/p',
+    'https://mercado.carrefour.com.br/cerveja-original-pilsen-350ml-lata-5699193/p',
+    'https://mercado.carrefour.com.br/cerveja-amstel-lager-lata-sleek-350ml-3180107/p',
+    'https://mercado.carrefour.com.br/cerveja-heineken-lata-269ml-6688802/p',
+
+    # Costela
+    'https://mercado.carrefour.com.br/costela-bovina-janela-congelada-aprox-1-8kg-224014/p',
+    'https://mercado.carrefour.com.br/busca/costela?page=1',
+    'https://mercado.carrefour.com.br/costela-de-cordeiro-a-vacuo-28738/p',
+
+    # Queijo
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-president-150g-8613966/p',
+    'https://mercado.carrefour.com.br/queijo-fatiado-sabor-mussarela-polenghi-144g-7413394/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-carrefour-aproximadamente-200-g-25585/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-importado-fatiado-aprox-200g-149225/p',
+    'https://mercado.carrefour.com.br/queijo-mussarela-fatiado-mandaka-com-150-g-6709206/p',
+    'https://mercado.carrefour.com.br/queijo-prato-fatiado-president-150g-8614008/p',
+    'https://mercado.carrefour.com.br/queijo-prato-fatiado-tirolez-150g-5033799/p',
+
+    # Linguiça
+    'https://mercado.carrefour.com.br/busca/lingui%C3%A7a',
+    'https://mercado.carrefour.com.br/linguica-toscana-grossa-auora-aprox--700g-21113/p',
+    'https://mercado.carrefour.com.br/linguica-toscana-sadia-700g-3213242/p',
+    'https://mercado.carrefour.com.br/linguica-toscana-swift-700-g-5600812/p',
+    'https://mercado.carrefour.com.br/busca/lingui%C3%A7a?page=3',
+
+    # Leite em pó
+    'https://mercado.carrefour.com.br/leite-em-po-molico-desnatado-lata-280g-9442405/p',
+    'https://mercado.carrefour.com.br/leite-em-po-integral-italac-200g-7680198/p',
+    'https://mercado.carrefour.com.br/leite-em-po-ninho-adulto-lata-350g-3428877/p',
+    'https://mercado.carrefour.com.br/leite-desnatado-em-po-instantaneo-italac-280g-8669937/p',
+
+    # Ovo de galinha
+    'https://mercado.carrefour.com.br/ovos-brancos-carrefour-20-unidades-5286387/p',
+    'https://mercado.carrefour.com.br/ovo-branco-grande-ac-planalto-ovos-bandeja-com-20-6206310/p',
+    'https://mercado.carrefour.com.br/ovos-vermelhos-carrefour-20-unidades-8453624/p',
+    'https://mercado.carrefour.com.br/ovo-vermelho-grande-mantiqueira-happy-eggs-com-20-unidades-6403603/p',
+    'https://mercado.carrefour.com.br/ovo-branco-grande-mantiqueira-happy-eggs-com-20-unidades-6403565/p',
+    'https://mercado.carrefour.com.br/ovo-caipira-grande-organicos-raiar-com-20-unidades-3050050/p',
+
+    # Óleo de soja
+    'https://mercado.carrefour.com.br/oleo-de-soja-confiare-900ml-3731243/p',
+    'https://mercado.carrefour.com.br/oleo-de-soja-soya-900ml-141836/p',
+    'https://mercado.carrefour.com.br/oleo-de-soja-vitaliv-garrafa-900-ml-6473563/p'
 ]
+
 
 # =========================
 # 6) Execução principal
